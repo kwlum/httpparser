@@ -211,7 +211,7 @@ pub const Header = struct {
     value: []const u8,
 };
 
-fn parseHeaders(buf: []const u8, headers: []Header) ParseError!usize {
+fn parseHeaders(buf: []const u8, headers: []Header, header_len: *usize) ParseError![]const u8 {
     var header_index: usize = 0;
     var rest = buf;
     rest = headers_blk: while (true) {
@@ -288,7 +288,7 @@ fn parseHeaders(buf: []const u8, headers: []Header) ParseError!usize {
         };
 
         // Append header into headers, otherwise ignore the rest of headers.
-        if (header_index >= headers.len) break :headers_blk rest;
+        if (header_index >= headers.len) return ParseError.TooManyHeaders;
 
         headers[header_index] = .{
             .name = header_name,
@@ -297,7 +297,8 @@ fn parseHeaders(buf: []const u8, headers: []Header) ParseError!usize {
         header_index += 1;
     };
 
-    return header_index;
+    header_len.* = header_index;
+    return rest;
 }
 
 fn trimRight(str: []const u8) []const u8 {
@@ -375,6 +376,7 @@ pub const Request = struct {
     version: ?u8 = null,
     headers: []Header,
     in_headers: []Header,
+    payload: ?[]const u8 = null,
 
     const Self = @This();
 
@@ -390,20 +392,22 @@ pub const Request = struct {
         var uri: []const u8 = undefined;
         var version: u8 = 0;
 
-        var remaining_buf = try skipEmptyLines(buf);
-        remaining_buf = try parseMethod(remaining_buf, &method);
-        remaining_buf = try skipSpaces(remaining_buf);
-        remaining_buf = try parseUri(remaining_buf, &uri);
-        remaining_buf = try skipSpaces(remaining_buf);
-        remaining_buf = try parseVersion(remaining_buf, &version);
-        remaining_buf = try parseNewLine(remaining_buf);
+        var rest = try skipEmptyLines(buf);
+        rest = try parseMethod(rest, &method);
+        rest = try skipSpaces(rest);
+        rest = try parseUri(rest, &uri);
+        rest = try skipSpaces(rest);
+        rest = try parseVersion(rest, &version);
+        rest = try parseNewLine(rest);
 
-        const header_len = try parseHeaders(remaining_buf, self.in_headers);
-        self.headers = self.in_headers[0..header_len];
+        var headers_len: usize = 0;
+        rest = try parseHeaders(rest, self.in_headers, &headers_len);
+        self.headers = self.in_headers[0..headers_len];
 
         self.method = method;
         self.path = uri;
         self.version = version;
+        if (rest.len > 0) self.payload = rest;
     }
 };
 
@@ -431,7 +435,9 @@ pub const Response = struct {
         rest = try skipSpaces(rest);
         rest = try parseCode(rest, &code);
         rest = try skipReason(rest);
-        const headers_len = try parseHeaders(rest, self.in_headers);
+
+        var headers_len: usize = 0;
+        rest = try parseHeaders(rest, self.in_headers, &headers_len);
         self.headers = self.in_headers[0..headers_len];
         self.code = code;
         self.version = version;
