@@ -4,6 +4,11 @@ pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule(.{
+        .name = "httpparser",
+        .source_file = .{ .path = "src/main.zig" },
+    });
+
     const lib = b.addStaticLibrary(.{
         .name = "httpparser",
         .root_source_file = .{ .path = "src/main.zig" },
