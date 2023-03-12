@@ -4,8 +4,7 @@ pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    _ = b.addModule(.{
-        .name = "httpparser",
+    _ = b.addModule("httpparser", .{
         .source_file = .{ .path = "src/main.zig" },
     });
 
