@@ -98,7 +98,7 @@ fn findCharFast(buf: []const u8, comptime needles: []const u8) ?usize {
     const flags = @splat(16, @as(u8, 20));
 
     comptime var needle: [needles.len]@Vector(16, u8) = undefined;
-    inline for (needles) |a, i| {
+    inline for (needles, 0..) |a, i| {
         needle[i] = @splat(16, @as(u8, a));
     }
 
@@ -130,7 +130,7 @@ fn parseToken(buf: []const u8, token: *[]const u8) ParseError![]const u8 {
     if (buf.len == 0) return ParseError.Eof;
     if (!isToken(buf[0])) return ParseError.InvalidToken;
 
-    for (buf) |a, i| {
+    for (buf, 0..) |a, i| {
         if (a == ' ') {
             token.* = buf[0..i];
             return buf[(i + 1)..];
@@ -165,7 +165,7 @@ fn parseUri(buf: []const u8, uri: *[]const u8) ParseError![]const u8 {
 fn parseVersion(buf: []const u8, version: *u8) ParseError![]const u8 {
     if (buf.len < 8) return ParseError.Eof;
 
-    inline for ("HTTP/1.") |a, i| {
+    inline for ("HTTP/1.", 0..) |a, i| {
         if (a != buf[i]) return ParseError.InvalidVersion;
     }
 
@@ -235,7 +235,7 @@ fn parseHeaders(buf: []const u8, headers: []Header, header_len: *usize) ParseErr
         // Parse header name.
         rest = header_name_blk: {
             var line = rest;
-            for (line) |a, i| {
+            for (line, 0..) |a, i| {
                 if (!isHeaderNameToken(a)) {
                     header_name = line[0..i];
                     line = line[i..];
@@ -253,7 +253,7 @@ fn parseHeaders(buf: []const u8, headers: []Header, header_len: *usize) ParseErr
         rest = header_value_blk: {
             var line = rest;
             // Skip whitespace.
-            for (line) |a, i| {
+            for (line, 0..) |a, i| {
                 if (a == ' ' or a == '\t') continue;
                 if (isHeaderValueToken(a)) {
                     line = line[i..];
@@ -312,7 +312,7 @@ fn trimRight(str: []const u8) []const u8 {
 }
 
 fn skipReason(buf: []const u8) ParseError![]const u8 {
-    for (buf) |a, i| {
+    for (buf, 0..) |a, i| {
         if (a == '\n') {
             return buf[(i + 1)..];
         } else if (a == '\r') {
@@ -329,7 +329,7 @@ fn skipEmptyLines(buf: []const u8) ParseError![]const u8 {
     if (buf.len == 0) return ParseError.Eof;
 
     var start: usize = 0;
-    for (buf) |a, i| {
+    for (buf, 0..) |a, i| {
         switch (a) {
             '\n' => start = i + 1,
             '\r' => {
@@ -346,7 +346,7 @@ fn skipEmptyLines(buf: []const u8) ParseError![]const u8 {
 fn skipSpaces(buf: []const u8) ParseError![]const u8 {
     if (buf.len == 0) return ParseError.Eof;
 
-    for (buf) |a, i| {
+    for (buf, 0..) |a, i| {
         switch (a) {
             ' ' => {},
             else => return buf[i..],
@@ -462,7 +462,7 @@ pub fn parseChunkSize(buf: []const u8) ParseError!ParseChunkSizeValue {
     var index: usize = 0;
     var rest = buf;
 
-    for (rest) |token, k| {
+    for (rest, 0..) |token, k| {
         if (std.mem.indexOfScalar(u8, hex_string, token)) |i| {
             if (chunk_count > 15) {
                 return ParseError.InvalidChunkSize;
@@ -506,7 +506,7 @@ pub fn parseChunkSize(buf: []const u8) ParseError!ParseChunkSizeValue {
     }
 
     // Ignore extension, linear white space, read until \r\n.
-    for (rest) |token, k| {
+    for (rest, 0..) |token, k| {
         if (token == '\r') {
             if (k + 1 >= rest.len) return ParseError.Eof;
 
